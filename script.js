@@ -2,6 +2,11 @@
  * IUBAT Employee Directory — script.js
  * Supabase-connected employee directory with search, filter,
  * sort, pagination, copy-to-clipboard, FAB, and feedback modal.
+ *
+ * Mobile view renders each employee as a stacked "contact card"
+ * box (Name / Designation / Department / Room / Email / Phone),
+ * each field on its own line, wrapping naturally so it always
+ * fits the phone screen — with a one-tap Copy button.
  */
 
 "use strict";
@@ -12,13 +17,17 @@ const SUPABASE_KEY = "sb_publishable_jJFUr_C6YXjG6zy1OvLK2Q_SkWqFTLO";
 const TABLE_NAME = "Employee";
 const FEEDBACK_EMAIL = "shawn.iubat@gmail.com";
 
+/* ── Shared inline icons ─────────────────────────────────── */
+const ICON_EMAIL = `<svg class="contact-chip__icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="4.5" width="15" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 5.5l6.5 5 6.5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const ICON_PHONE = `<svg class="contact-chip__icon" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5.2 3h2.1c.4 0 .8.3.9.7l.8 2.7c.1.4 0 .8-.3 1.1L7.4 8.8c.8 1.9 2.1 3.2 4 4l1.3-1.3c.3-.3.7-.4 1.1-.3l2.7.8c.4.1.7.5.7.9v2.1c0 .6-.5 1-1 1-6 .2-11.4-5.2-11.2-11.2 0-.5.4-1 .2-1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+
 /* ── State ──────────────────────────────────────────────── */
-let allEmployees = [];
-let filteredData = [];
+let allEmployees = []; // raw data from Supabase
+let filteredData = []; // after search + dept filter
 let currentPage = 1;
 let rowsPerPage = 20;
 let sortCol = "Name";
-let sortDir = "asc";
+let sortDir = "asc"; // 'asc' | 'desc'
 let searchQuery = "";
 let deptFilter = "";
 let fabOpen = false;
@@ -190,11 +199,15 @@ function renderTable() {
       const cell = emp.Cell ? emp.Cell.trim() : "";
 
       const emailHtml = email
-        ? `<a class="link-email" href="mailto:${escHtml(email)}" title="Send email">✉ ${escHtml(email)}</a>`
+        ? `<a class="contact-chip contact-chip--email" href="mailto:${escHtml(email)}" title="Click to email">
+          ${ICON_EMAIL}<span class="contact-chip__text">${escHtml(email)}</span>
+        </a>`
         : '<span style="color:var(--text-muted)">—</span>';
 
       const cellHtml = cell
-        ? `<a class="link-phone" href="tel:${escHtml(cell)}" title="Call">📞 ${escHtml(cell)}</a>`
+        ? `<a class="contact-chip contact-chip--phone" href="tel:${escHtml(cell)}" title="Click to call">
+          ${ICON_PHONE}<span class="contact-chip__text">${escHtml(cell)}</span>
+        </a>`
         : '<span style="color:var(--text-muted)">—</span>';
 
       return `
@@ -216,7 +229,18 @@ function renderTable() {
     .join("");
 }
 
-/* ── Mobile Contact-Card Render ────────────────────────── */
+/* ── Mobile Contact-Card Render ──────────────────────────
+ * Each employee is shown as a stacked box:
+ *   Name,
+ *   Designation,
+ *   Department,
+ *   Room # ___,
+ *   email,
+ *   phone
+ * Every field sits on its own line and wraps normally, so
+ * long names/departments never get clipped or overflow the
+ * phone's width — and a Copy button copies the same text.
+ * ────────────────────────────────────────────────────── */
 function renderMobileCards() {
   const start = (currentPage - 1) * rowsPerPage;
   const slice = filteredData.slice(start, start + rowsPerPage);
@@ -232,55 +256,62 @@ function renderMobileCards() {
       const name = (emp.Name || "").trim();
       const desig = (emp.Designation || "").trim();
       const dept = (emp["Department or Office"] || "").trim();
-      const room = (emp.Room || "").trim();
+      const room = formatRoom(emp.Room);
       const email = (emp.Email || "").trim();
       const cell = (emp.Cell || "").trim();
 
-      let html = `
+      // Plain descriptive fields — comma-joined, each on its own line,
+      // no trailing comma on the very last one.
+      const infoFields = [name, desig, dept, room].filter(Boolean);
+      const infoHtml = infoFields
+        .map((text, i) => {
+          const suffix = i === infoFields.length - 1 ? "" : ",";
+          const extraCls =
+            i === 0
+              ? " mobile-card__field--name"
+              : i === 1 && desig
+                ? " mobile-card__field--designation"
+                : "";
+          return `<p class="mobile-card__field${extraCls}">${escHtml(text)}${suffix}</p>`;
+        })
+        .join("");
+
+      // Email / phone are shown as clearly tappable action rows —
+      // icon + value + a plain-language hint of what tapping does.
+      const actionsHtml = `
+      ${
+        email
+          ? `
+        <a class="mobile-card__action mobile-card__action--email" href="mailto:${escHtml(email)}">
+          <span class="mobile-card__action-icon">${ICON_EMAIL}</span>
+          <span class="mobile-card__action-body">
+            <span class="mobile-card__action-text">${escHtml(email)}</span>
+            <span class="mobile-card__action-hint">Tap to email</span>
+          </span>
+        </a>`
+          : ""
+      }
+      ${
+        cell
+          ? `
+        <a class="mobile-card__action mobile-card__action--phone" href="tel:${escHtml(cell)}">
+          <span class="mobile-card__action-icon">${ICON_PHONE}</span>
+          <span class="mobile-card__action-body">
+            <span class="mobile-card__action-text">${escHtml(cell)}</span>
+            <span class="mobile-card__action-hint">Tap to call</span>
+          </span>
+        </a>`
+          : ""
+      }
+    `;
+
+      return `
       <div class="mobile-card">
         <div class="mobile-card__accent"></div>
         <div class="mobile-card__body">
-      `;
-
-      if (name) {
-        html += `<p class="mobile-card__field mobile-card__field--name">${escHtml(name)}</p>`;
-      }
-      if (desig) {
-        html += `<p class="mobile-card__field mobile-card__field--designation">${escHtml(desig)}</p>`;
-      }
-      if (dept) {
-        html += `<p class="mobile-card__field">${escHtml(dept)}</p>`;
-      }
-      if (room) {
-        html += `<p class="mobile-card__field">Room # ${escHtml(room)}</p>`;
-      }
-      if (email) {
-        html += `
-          <p class="mobile-card__field mobile-card__field--clickable">
-            <a href="mailto:${escHtml(email)}" class="mobile-card__link mobile-card__link--email">
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M2 5l8 6 8-6M2 5v10a2 2 0 002 2h12a2 2 0 002-2V5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              ${escHtml(email)}
-            </a>
-          </p>
-        `;
-      }
-      if (cell) {
-        html += `
-          <p class="mobile-card__field mobile-card__field--clickable">
-            <a href="tel:${escHtml(cell)}" class="mobile-card__link mobile-card__link--phone">
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M6 2L4 5a13 13 0 007 7l3-2 3 4a2 2 0 01-1 3A17 17 0 011 5a2 2 0 012-1l4 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              ${escHtml(cell)}
-            </a>
-          </p>
-        `;
-      }
-
-      html += `
+          ${infoHtml}
         </div>
+        ${email || cell ? `<div class="mobile-card__actions">${actionsHtml}</div>` : ""}
         <div class="mobile-card__footer">
           <button class="btn-copy-card" onclick="copyCard(${globalIdx}, this)" title="Copy employee info">
             <svg class="btn-copy-card__icon" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 11V3a1 1 0 011-1h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -288,10 +319,7 @@ function renderMobileCards() {
             <span class="btn-copy-card__label">Copy</span>
           </button>
         </div>
-      </div>
-      `;
-
-      return html;
+      </div>`;
     })
     .join("");
 }
@@ -350,6 +378,18 @@ function goToPage(p) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/* ── Utility: Room label formatter ───────────────────────
+ * Some records already store the full label (e.g. "Room # 426"
+ * or "Room 426") in the Room field. Only prepend "Room # " when
+ * the raw value doesn't already say "room", so it's never shown
+ * twice (e.g. "Room # Room # 426").
+ * ────────────────────────────────────────────────────── */
+function formatRoom(room) {
+  const trimmed = (room || "").trim();
+  if (!trimmed) return "";
+  return /room/i.test(trimmed) ? trimmed : `Room # ${trimmed}`;
+}
+
 /* ── Utility: HTML escape ───────────────────────────────── */
 function escHtml(str) {
   return String(str)
@@ -364,7 +404,7 @@ function buildContactText(emp) {
   const name = (emp.Name || "").trim();
   const desig = (emp.Designation || "").trim();
   const dept = (emp["Department or Office"] || "").trim();
-  const room = (emp.Room || "").trim();
+  const room = formatRoom(emp.Room);
   const email = (emp.Email || "").trim();
   const cell = (emp.Cell || "").trim();
 
@@ -372,94 +412,98 @@ function buildContactText(emp) {
   if (name) fields.push(name);
   if (desig) fields.push(desig);
   if (dept) fields.push(dept);
-  if (room) fields.push(`Room # ${room}`);
+  if (room) fields.push(room);
   if (email) fields.push(email);
   if (cell) fields.push(cell);
 
-  return fields.join("\n");
+  // Join with ",\n" and end without a trailing comma
+  return fields.join(",\n");
 }
 
+/**
+ * Copy text to the clipboard as reliably as possible across browsers.
+ *
+ * Why this matters: the async Clipboard API (navigator.clipboard.writeText)
+ * silently fails on some mobile browsers unless it is called at the very
+ * top of a user-gesture handler with the page already focused — which is
+ * why the old implementation "worked after scrolling" (scrolling/tapping
+ * elsewhere had given the document focus) but often failed on a first tap.
+ *
+ * The synchronous document.execCommand('copy') fallback does not have
+ * that focus requirement, so we try it FIRST — it works consistently
+ * inside any click handler — and only reach for the modern async API
+ * if the legacy method isn't available.
+ */
 function copyTextToClipboard(text, onDone) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        if (onDone) onDone();
-      })
-      .catch((err) => {
-        console.error("Clipboard API failed:", err);
-        fallbackCopy(text, onDone);
-      });
-  } else {
-    fallbackCopy(text, onDone);
-  }
-}
-
-function fallbackCopy(text, onDone) {
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  ta.style.position = "fixed";
-  ta.style.top = "0";
-  ta.style.left = "0";
-  ta.style.width = "1px";
-  ta.style.height = "1px";
-  ta.style.opacity = "0";
-  ta.style.pointerEvents = "none";
-  ta.style.border = "none";
-  ta.style.outline = "none";
-  document.body.appendChild(ta);
-
-  ta.select();
-  ta.setSelectionRange(0, 99999);
+  let copied = false;
 
   try {
-    const success = document.execCommand("copy");
-    if (success && onDone) {
-      onDone();
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.opacity = "0";
+    ta.style.pointerEvents = "none";
+    document.body.appendChild(ta);
+
+    const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+    if (isIOS) {
+      // iOS ignores select() on a non-editable element unless a range is set.
+      const range = document.createRange();
+      range.selectNodeContents(ta);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      ta.setSelectionRange(0, text.length);
+    } else {
+      ta.focus();
+      ta.select();
     }
+
+    copied = document.execCommand("copy");
+    document.body.removeChild(ta);
   } catch (err) {
-    console.error("Fallback copy error:", err);
+    copied = false;
   }
 
-  setTimeout(() => {
-    document.body.removeChild(ta);
-  }, 100);
+  if (copied) {
+    onDone();
+    return;
+  }
+
+  // Fallback: modern async Clipboard API (secure contexts only).
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard
+      .writeText(text)
+      .then(onDone)
+      .catch(() => onDone());
+  } else {
+    onDone();
+  }
 }
 
 /* ── Copy row (desktop table) ───────────────────────────── */
 function copyRow(idx) {
   const emp = filteredData[idx];
-  if (!emp) {
-    showToast("⚠️ Employee not found");
-    return;
-  }
-  const text = buildContactText(emp);
-  copyTextToClipboard(text, () => {
+  if (!emp) return;
+  copyTextToClipboard(buildContactText(emp), () => {
     showToast("✅ Employee info copied to clipboard");
-    const buttons = document.querySelectorAll(".btn-copy-row");
-    const btn = buttons[idx];
-    if (btn) {
-      btn.classList.add("copied");
-      setTimeout(() => btn.classList.remove("copied"), 1500);
-    }
   });
 }
 
 /* ── Copy card (mobile) ─────────────────────────────────── */
 function copyCard(idx, btnEl) {
   const emp = filteredData[idx];
-  if (!emp) {
-    showToast("⚠️ Employee not found");
-    return;
-  }
-  const text = buildContactText(emp);
-  copyTextToClipboard(text, () => {
+  if (!emp) return;
+  copyTextToClipboard(buildContactText(emp), () => {
     showToast("✅ Employee info copied to clipboard");
     if (btnEl) {
       btnEl.classList.add("copied");
       const label = btnEl.querySelector(".btn-copy-card__label");
       const prevLabel = label ? label.textContent : null;
-      if (label) label.textContent = "Copied!";
+      if (label) label.textContent = "Copied";
       setTimeout(() => {
         btnEl.classList.remove("copied");
         if (label && prevLabel !== null) label.textContent = prevLabel;
@@ -592,3 +636,17 @@ document.addEventListener("DOMContentLoaded", () => {
   initSortHeaders();
   initApp();
 });
+
+/*
+ * ── SQL Setup Reference ───────────────────────────────────
+ * Run this in your Supabase SQL Editor before first use:
+ *
+ *   ALTER TABLE "Employee" ENABLE ROW LEVEL SECURITY;
+ *
+ *   CREATE POLICY "Public read access"
+ *     ON "Employee"
+ *     FOR SELECT
+ *     TO anon
+ *     USING (true);
+ * ─────────────────────────────────────────────────────────
+ */
