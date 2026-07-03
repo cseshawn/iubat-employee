@@ -6,12 +6,16 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <title>IUBAT Employee Directory</title>
+    <title>IUBAT Employee Roster</title>
+    <!-- Welcome meta description for search engines and screen readers -->
+    <meta
+      name="description"
+      content="Welcome to IUBAT Employee Roster. Search faculty, staff, or any employee from IUBAT – International University of Business Agriculture and Technology."
+    />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
-    <!-- HEADER -->
     <header class="site-header">
       <div class="header-inner">
         <div class="logo-block">
@@ -53,7 +57,7 @@
             </svg>
           </div>
           <div class="logo-text">
-            <h1 class="site-title">IUBAT Employee Directory</h1>
+            <h1 class="site-title">IUBAT Employee Roster</h1>
             <p class="site-subtitle">
               International University of Business Agriculture and Technology
             </p>
@@ -65,35 +69,18 @@
       </div>
     </header>
 
-    <!-- MAIN CONTENT -->
     <main class="main-content">
-      <!-- Stats Cards -->
-      <section class="stats-row" aria-label="Directory statistics">
-        <div class="stat-card">
-          <div class="stat-card__icon">👥</div>
-          <div class="stat-card__body">
-            <span class="stat-card__value" id="stat-total">—</span>
-            <span class="stat-card__label">Total</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card__icon">🔍</div>
-          <div class="stat-card__body">
-            <span class="stat-card__value" id="stat-showing">—</span>
-            <span class="stat-card__label">Showing</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card__icon">🏢</div>
-          <div class="stat-card__body">
-            <span class="stat-card__value" id="stat-depts">—</span>
-            <span class="stat-card__label">Depts</span>
-          </div>
-        </div>
-      </section>
+      <!-- Welcome Message -->
+      <div class="welcome-banner">
+        <h2>👋 Welcome to IUBAT Employee Roster</h2>
+        <p>
+          Search faculty, staff, or any employee from IUBAT – International
+          University of Business Agriculture and Technology.
+        </p>
+      </div>
 
-      <!-- Search & Filter Bar -->
-      <section class="toolbar" aria-label="Search and filter">
+      <!-- Search Bar - fully visible, prominent -->
+      <section class="toolbar" aria-label="Search">
         <div class="search-wrap">
           <svg
             class="search-icon"
@@ -119,7 +106,7 @@
             type="search"
             id="search-input"
             class="search-input"
-            placeholder="Search name, designation, department…"
+            placeholder="Search by name, designation, department…"
             autocomplete="off"
             aria-label="Search employees"
           />
@@ -137,30 +124,6 @@
               />
             </svg>
           </button>
-        </div>
-
-        <div class="filter-wrap">
-          <select
-            id="dept-filter"
-            class="dept-select"
-            aria-label="Filter by department"
-          >
-            <option value="">All Departments</option>
-          </select>
-        </div>
-
-        <div class="rows-wrap">
-          <label for="rows-per-page" class="rows-label">Rows:</label>
-          <select
-            id="rows-per-page"
-            class="rows-select"
-            aria-label="Rows per page"
-          >
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-          </select>
         </div>
       </section>
 
@@ -189,13 +152,11 @@
       <div id="empty-state" class="empty-state hidden" role="status">
         <div class="empty-icon">🔍</div>
         <h3>No results found</h3>
-        <p>Try adjusting your search or filter criteria.</p>
-        <button class="btn-clear-all" onclick="clearAll()">
-          Clear all filters
-        </button>
+        <p>Try adjusting your search criteria.</p>
+        <button class="btn-clear-all" onclick="clearAll()">Clear search</button>
       </div>
 
-      <!-- Desktop Table + Mobile Cards wrapper -->
+      <!-- Table + Mobile Cards wrapper -->
       <div id="table-wrap" class="table-wrap hidden">
         <!-- Desktop Table -->
         <div class="table-container">
@@ -206,19 +167,9 @@
           >
             <thead>
               <tr>
-                <th class="sortable" data-col="Name" scope="col">
-                  Name <span class="sort-icon" aria-hidden="true"></span>
-                </th>
-                <th class="sortable" data-col="Designation" scope="col">
-                  Designation <span class="sort-icon" aria-hidden="true"></span>
-                </th>
-                <th
-                  class="sortable"
-                  data-col="Department or Office"
-                  scope="col"
-                >
-                  Department <span class="sort-icon" aria-hidden="true"></span>
-                </th>
+                <th scope="col">Name</th>
+                <th scope="col">Designation</th>
+                <th scope="col">Department</th>
                 <th scope="col" class="col-room">Room</th>
                 <th scope="col" class="col-email">Email</th>
                 <th scope="col" class="col-phone">Phone</th>
@@ -229,194 +180,50 @@
           </table>
         </div>
 
-        <!-- Mobile Cards (contact-card style, shown on small screens) -->
+        <!-- Mobile Cards (shown on small screens) -->
         <div class="mobile-cards" id="mobile-cards-list"></div>
-
-        <!-- Pagination -->
-        <div class="pagination" id="pagination" aria-label="Pagination">
-          <button
-            class="page-btn"
-            id="btn-prev"
-            aria-label="Previous page"
-            disabled
-          >
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M10 12L6 8l4-4"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Prev
-          </button>
-          <div class="page-numbers" id="page-numbers"></div>
-          <button class="page-btn" id="btn-next" aria-label="Next page">
-            Next
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M6 4l4 4-4 4"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
       </div>
+
+      <!-- Developer Contact / Request Update Section -->
+      <section class="contact-section">
+        <div class="contact-card">
+          <div class="contact-card__icon">📬</div>
+          <div class="contact-card__body">
+            <h3>Request / Update</h3>
+            <p>
+              For corrections, profile updates, or any request, reach out to the
+              developer:
+            </p>
+            <ul class="contact-list">
+              <li>
+                <span class="contact-label">📧 Email:</span>
+                <a href="mailto:shawn.iubat@gmail.com">shawn.iubat@gmail.com</a>
+              </li>
+              <li>
+                <span class="contact-label">👤 Facebook:</span>
+                <a
+                  href="https://facebook.com/shawnazd"
+                  target="_blank"
+                  rel="noopener"
+                  >shawnazd</a
+                >
+              </li>
+              <li>
+                <span class="contact-label">📱 WhatsApp:</span>
+                <a
+                  href="https://wa.me/8801873319733"
+                  target="_blank"
+                  rel="noopener"
+                  >01873319733</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
     </main>
 
-    <!-- FEEDBACK MODAL -->
-    <div
-      id="feedback-modal"
-      class="modal-backdrop hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <div class="modal">
-        <button
-          class="modal-close"
-          aria-label="Close modal"
-          onclick="closeModal()"
-        >
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path
-              d="M5 5l10 10M15 5L5 15"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-        <div class="modal-header">
-          <div class="modal-icon">📧</div>
-          <h2 class="modal-title" id="modal-title">Request Information</h2>
-          <p class="modal-subtitle">
-            Fill in the form and we'll open your email client
-          </p>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="form-name">Your Name</label>
-            <input
-              type="text"
-              id="form-name"
-              class="form-input"
-              placeholder="Jane Smith"
-              autocomplete="name"
-            />
-          </div>
-          <div class="form-group">
-            <label for="form-email">Your Email</label>
-            <input
-              type="email"
-              id="form-email"
-              class="form-input"
-              placeholder="you@example.com"
-              autocomplete="email"
-            />
-          </div>
-          <div class="form-group">
-            <label for="form-message">Message</label>
-            <textarea
-              id="form-message"
-              class="form-input form-textarea"
-              rows="4"
-              placeholder="Write your message here…"
-            ></textarea>
-          </div>
-          <button class="btn-submit" onclick="submitFeedback()">
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path
-                d="M3 10l7-7 7 7M10 3v14"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Open Email Client
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- FAB -->
-    <div class="fab-container" id="fab-container">
-      <div class="fab-actions" id="fab-actions" aria-hidden="true">
-        <div class="fab-action-item">
-          <span class="fab-action-label">Request Info</span>
-          <button
-            class="fab-action-btn"
-            aria-label="Request Info"
-            onclick="openModal()"
-          >
-            📧
-          </button>
-        </div>
-        <div class="fab-action-item">
-          <span class="fab-action-label">GitHub Profile</span>
-          <a
-            class="fab-action-btn"
-            href="https://github.com/cseshawn"
-            target="_blank"
-            rel="noopener"
-            aria-label="GitHub Profile"
-            >🐙</a
-          >
-        </div>
-        <div class="fab-action-item">
-          <span class="fab-action-label">Facebook Profile</span>
-          <a
-            class="fab-action-btn"
-            href="https://facebook.com/shawnazd"
-            target="_blank"
-            rel="noopener"
-            aria-label="Facebook Profile"
-            >👥</a
-          >
-        </div>
-      </div>
-      <button
-        class="fab-main"
-        id="fab-main"
-        aria-label="Open actions menu"
-        aria-expanded="false"
-        onclick="toggleFab()"
-      >
-        <svg
-          class="fab-icon fab-icon--plus"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M12 5v14M5 12h14"
-            stroke="white"
-            stroke-width="2.5"
-            stroke-linecap="round"
-          />
-        </svg>
-        <svg
-          class="fab-icon fab-icon--close hidden"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M6 6l12 12M18 6L6 18"
-            stroke="white"
-            stroke-width="2.5"
-            stroke-linecap="round"
-          />
-        </svg>
-      </button>
-    </div>
-
-    <!-- TOAST -->
+    <!-- Toast notification -->
     <div
       id="toast"
       class="toast hidden"
