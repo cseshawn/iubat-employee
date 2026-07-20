@@ -1,5 +1,5 @@
-
 // ── script.js ──
+// IUBAT Employee Roster — data, rendering, search, and interactions
 
 // ─── FULL DATA (all employees) ──────────────────────────
 const employees = [
@@ -623,12 +623,43 @@ const emptyState = document.getElementById('emptyState');
 const rosterWrap = document.getElementById('rosterWrap');
 const toast = document.getElementById('toast');
 const lastUpdated = document.getElementById('lastUpdated');
+const resultCount = document.getElementById('resultCount');
 
 const fabToggle = document.getElementById('fabToggle');
 const fabPopover = document.getElementById('fabPopover');
 const closePopover = document.getElementById('closePopover');
 
 let toastTimer = null;
+
+// ─── department color coding ─────────────────────────────
+// A small curated palette; each department is deterministically
+// assigned one so the roster reads like a color-coded index —
+// the same department always gets the same tab color.
+const DEPT_PALETTE = [
+    '#C89B3C', // brass
+    '#0E7C7B', // teal
+    '#8B5FBF', // violet
+    '#3E7CB1', // steel blue
+    '#B2542D', // clay
+    '#4C8C4A', // moss
+    '#B0405A', // rose
+    '#5D6D7E', // slate
+];
+
+function deptColor(dept) {
+    let hash = 0;
+    for (let i = 0; i < dept.length; i++) {
+        hash = (hash * 31 + dept.charCodeAt(i)) >>> 0;
+    }
+    return DEPT_PALETTE[hash % DEPT_PALETTE.length];
+}
+
+function deptInitials(dept) {
+    const stop = new Set(['of', 'and', 'the', 'in', 'for', '&', 'a']);
+    const words = dept.replace(/[`']/g, '').split(/\s+/).filter(w => w && !stop.has(w.toLowerCase()));
+    const letters = words.slice(0, 3).map(w => w[0].toUpperCase()).join('');
+    return letters || dept.slice(0, 2).toUpperCase();
+}
 
 // ─── helpers ─────────────────────────────────────────────
 function showToast(msg) {
@@ -666,54 +697,65 @@ function esc(str) {
 }
 
 // ─── render cards ────────────────────────────────────────
-// Each contact method (email / phone) is its own row: icon + kind label +
-// value on the link, with a small icon-only copy button beside it — never
-// wrapped text, never a floating "tap to email"/"tap to call" caption.
+// One employee per row. Each card carries a left "index tab" colored
+// by department (a small library-catalog signature so the eye can
+// group people by department while scanning), a room plaque, and two
+// contact rows — email and phone — each with an icon, the value, a
+// mini "tap to email / tap to call" caption, and a copy button.
 function render(data) {
     if (!data || data.length === 0) {
         rosterWrap.classList.add('hidden');
         emptyState.classList.remove('hidden');
+        resultCount.textContent = '';
         return;
     }
     emptyState.classList.add('hidden');
     rosterWrap.classList.remove('hidden');
+    resultCount.textContent = `${data.length} ${data.length === 1 ? 'person' : 'people'}`;
 
-    cardList.innerHTML = data.map(e => `
-        <div class="employee-card">
-            <div class="card-name">${esc(e.name)}</div>
-            <div class="card-designation">${esc(e.designation)}</div>
-            <div class="card-meta-row">
-                <span class="card-dept">${esc(e.dept)}</span>
-                ${e.room ? `<span class="card-room"><strong>Room</strong> ${esc(e.room)}</span>` : ''}
+    cardList.innerHTML = data.map(e => {
+        const color = deptColor(e.dept);
+        return `
+        <article class="employee-card" style="--tab-color:${color}">
+            <div class="card-tab" style="background:${color}" aria-hidden="true">
+                <span class="tab-initials">${esc(deptInitials(e.dept))}</span>
             </div>
+            <div class="card-body">
+                <div class="card-name">${esc(e.name)}</div>
+                <div class="card-designation">${esc(e.designation)}</div>
+                <div class="card-meta-row">
+                    <span class="card-dept" style="color:${color}">${esc(e.dept)}</span>
+                    ${e.room ? `<span class="card-room">Room <strong>${esc(e.room)}</strong></span>` : ''}
+                </div>
 
-            ${(e.email || e.phone) ? `
-            <div class="contact-list">
-                ${e.email ? `
-                <div class="contact-item">
-                    <a href="mailto:${esc(e.email)}" class="contact-link" aria-label="Email ${esc(e.email)}">
-                        <span class="icon">✉️</span>
-                        <span class="contact-text">
-                            <span class="contact-kind">Email</span>
-                            <span class="contact-value">${esc(e.email)}</span>
-                        </span>
-                    </a>
-                    <button class="copy-btn" data-copy="${esc(e.email)}" aria-label="Copy email">⧉</button>
+                ${(e.email || e.phone) ? `
+                <div class="contact-list">
+                    ${e.email ? `
+                    <div class="contact-item">
+                        <a href="mailto:${esc(e.email)}" class="contact-link" aria-label="Email ${esc(e.email)}">
+                            <span class="icon" aria-hidden="true">✉️</span>
+                            <span class="contact-text">
+                                <span class="contact-value">${esc(e.email)}</span>
+                                <span class="contact-caption">Tap to email</span>
+                            </span>
+                        </a>
+                        <button class="copy-btn" data-copy="${esc(e.email)}" aria-label="Copy email">⧉</button>
+                    </div>` : ''}
+                    ${e.phone ? `
+                    <div class="contact-item">
+                        <a href="tel:${esc(e.phone)}" class="contact-link" aria-label="Call ${esc(e.phone)}">
+                            <span class="icon" aria-hidden="true">📞</span>
+                            <span class="contact-text">
+                                <span class="contact-value">${esc(e.phone)}</span>
+                                <span class="contact-caption">Tap to call</span>
+                            </span>
+                        </a>
+                        <button class="copy-btn" data-copy="${esc(e.phone)}" aria-label="Copy phone">⧉</button>
+                    </div>` : ''}
                 </div>` : ''}
-                ${e.phone ? `
-                <div class="contact-item">
-                    <a href="tel:${esc(e.phone)}" class="contact-link" aria-label="Call ${esc(e.phone)}">
-                        <span class="icon">📞</span>
-                        <span class="contact-text">
-                            <span class="contact-kind">Phone</span>
-                            <span class="contact-value">${esc(e.phone)}</span>
-                        </span>
-                    </a>
-                    <button class="copy-btn" data-copy="${esc(e.phone)}" aria-label="Copy phone">⧉</button>
-                </div>` : ''}
-            </div>` : ''}
-        </div>
-    `).join('');
+            </div>
+        </article>
+    `}).join('');
 }
 
 // Event delegation for copy buttons — attached once, survives every
@@ -721,6 +763,7 @@ function render(data) {
 cardList.addEventListener('click', function (e) {
     const btn = e.target.closest('.copy-btn');
     if (!btn) return;
+    e.preventDefault();
     e.stopPropagation();
     const text = btn.getAttribute('data-copy');
     copyToClipboard(text);
@@ -736,8 +779,9 @@ function filterData(query) {
         e.name.toLowerCase().includes(q) ||
         e.designation.toLowerCase().includes(q) ||
         e.dept.toLowerCase().includes(q) ||
-        e.email.toLowerCase().includes(q) ||
-        e.phone.includes(q)
+        (e.email && e.email.toLowerCase().includes(q)) ||
+        (e.phone && e.phone.includes(q)) ||
+        (e.room && e.room.toLowerCase().includes(q))
     );
 }
 
@@ -780,6 +824,12 @@ document.addEventListener('click', (e) => {
     }
 });
 
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && fabPopover.classList.contains('open')) {
+        togglePopover(false);
+    }
+});
+
 // ─── init ─────────────────────────────────────────────────
 function init() {
     loadingState.classList.remove('hidden');
@@ -790,7 +840,8 @@ function init() {
     setTimeout(() => {
         loadingState.classList.add('hidden');
         if (employees.length) {
-            lastUpdated.textContent = `Updated: ${new Date().toLocaleDateString()}`;
+            const now = new Date();
+            lastUpdated.textContent = `Updated ${now.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
             updateSearch();
         } else {
             errorState.classList.remove('hidden');
@@ -803,4 +854,3 @@ searchInput.addEventListener('input', updateSearch);
 clearBtn.addEventListener('click', clearSearch);
 
 document.addEventListener('DOMContentLoaded', init);
-
