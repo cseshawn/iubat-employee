@@ -4891,16 +4891,16 @@ let currentFilter = "";
 
 // ─── Department color palette ─────────────────────────────────────
 const DEPT_COLORS = [
-  "#10b981",
-  "#34d399",
-  "#059669",
-  "#047857",
-  "#6ee7b7",
-  "#14b8a6",
-  "#0d9488",
-  "#22d3ee",
-  "#06b6d4",
-  "#0891b2",
+  "#3a8f72",
+  "#4f9a82",
+  "#5c8f7a",
+  "#6b9b88",
+  "#4a7d6a",
+  "#5d8f7e",
+  "#6a9485",
+  "#4b8570",
+  "#588f7c",
+  "#628f80",
 ];
 
 function getDeptColor(dept) {
@@ -4911,17 +4911,28 @@ function getDeptColor(dept) {
   return DEPT_COLORS[hash % DEPT_COLORS.length];
 }
 
-function getDeptInitials(dept) {
-  const stopWords = new Set(["of", "and", "the", "in", "for", "&", "a", "at"]);
-  const words = dept
-    .replace(/[`']/g, "")
-    .split(/\s+/)
-    .filter((w) => w && !stopWords.has(w.toLowerCase()));
-  const letters = words
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-  return letters || dept.slice(0, 2).toUpperCase();
+function formatEmployeeShareText(employee) {
+  const lines = [employee.name, employee.designation, employee.dept];
+  if (employee.room) lines.push(`Room ${employee.room}`);
+  if (employee.email) lines.push(employee.email);
+  if (employee.phone) lines.push(employee.phone);
+  return lines.join("\n");
+}
+
+async function shareEmployee(employee) {
+  const text = formatEmployeeShareText(employee);
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: employee.name,
+        text,
+      });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+    }
+  }
+  copyToClipboard(text);
 }
 
 // ─── Toast ────────────────────────────────────────────────────────
@@ -4966,6 +4977,13 @@ function esc(str) {
   return d.innerHTML;
 }
 
+const ICONS = {
+  share: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>`,
+  copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+  email: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`,
+  phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+};
+
 // ─── Render ──────────────────────────────────────────────────────
 function render(data) {
   if (!data || data.length === 0) {
@@ -4979,15 +4997,24 @@ function render(data) {
   resultCount.textContent = `${data.length} ${data.length === 1 ? "employee" : "employees"}`;
 
   const html = data
-    .map((e) => {
+    .map((e, index) => {
       const color = getDeptColor(e.dept);
-      const initials = getDeptInitials(e.dept);
       return `
-            <article class="employee-card" style="--tab-color: ${color};">
-                <div class="card-tab" style="background: ${color};" aria-hidden="true">${esc(initials)}</div>
+            <article class="employee-card" style="--dept-color: ${color}; animation-delay: ${Math.min(index * 18, 240)}ms;">
+                <div class="card-accent"></div>
                 <div class="card-body">
-                    <div class="card-name">${esc(e.name)}</div>
-                    <div class="card-designation">${esc(e.designation)}</div>
+                    <div class="card-top">
+                        <div class="card-info">
+                            <div class="card-name">${esc(e.name)}</div>
+                            <div class="card-designation">${esc(e.designation)}</div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="share-btn" data-share-index="${index}" aria-label="Share contact" title="Share contact">
+                                ${ICONS.share}
+                                <span class="share-label">Share</span>
+                            </button>
+                        </div>
+                    </div>
                     <div class="card-meta">
                         <span class="card-dept" style="color: ${color};">${esc(e.dept)}</span>
                         ${e.room ? `<span class="card-room">Room <strong>${esc(e.room)}</strong></span>` : ""}
@@ -5001,13 +5028,13 @@ function render(data) {
                                 ? `
                                 <div class="contact-row">
                                     <a href="mailto:${esc(e.email)}" class="contact-link">
-                                        <span class="icon">✉</span>
+                                        <span class="icon">${ICONS.email}</span>
                                         <span class="contact-info">
                                             <span class="contact-value">${esc(e.email)}</span>
-                                            <span class="contact-label">tap to email</span>
+                                            <span class="contact-label">Email</span>
                                         </span>
                                     </a>
-                                    <button class="copy-btn" data-copy="${esc(e.email)}" aria-label="Copy email">⧉</button>
+                                    <button class="copy-btn" data-copy="${esc(e.email)}" aria-label="Copy email" title="Copy email">${ICONS.copy}</button>
                                 </div>
                             `
                                 : ""
@@ -5017,13 +5044,13 @@ function render(data) {
                                 ? `
                                 <div class="contact-row">
                                     <a href="tel:${esc(e.phone)}" class="contact-link">
-                                        <span class="icon">📞</span>
+                                        <span class="icon">${ICONS.phone}</span>
                                         <span class="contact-info">
                                             <span class="contact-value">${esc(e.phone)}</span>
-                                            <span class="contact-label">tap to call</span>
+                                            <span class="contact-label">Phone</span>
                                         </span>
                                     </a>
-                                    <button class="copy-btn" data-copy="${esc(e.phone)}" aria-label="Copy phone">⧉</button>
+                                    <button class="copy-btn" data-copy="${esc(e.phone)}" aria-label="Copy phone" title="Copy phone">${ICONS.copy}</button>
                                 </div>
                             `
                                 : ""
@@ -5039,17 +5066,30 @@ function render(data) {
     .join("");
 
   cardList.innerHTML = html;
+  cardList._renderedData = data;
+
 }
 
-// ─── Event delegation for copy ──────────────────────────────────
+// ─── Event delegation for copy / share ──────────────────────────
 cardList.addEventListener("click", function (e) {
-  const btn = e.target.closest(".copy-btn");
-  if (!btn) return;
+  const copyBtn = e.target.closest(".copy-btn");
+  if (copyBtn) {
+    e.preventDefault();
+    copyToClipboard(copyBtn.getAttribute("data-copy"));
+    copyBtn.classList.add("copied");
+    setTimeout(() => copyBtn.classList.remove("copied"), 900);
+    return;
+  }
+
+  const shareBtn = e.target.closest(".share-btn");
+  if (!shareBtn) return;
   e.preventDefault();
-  const text = btn.getAttribute("data-copy");
-  copyToClipboard(text);
-  btn.classList.add("copied");
-  setTimeout(() => btn.classList.remove("copied"), 900);
+  const index = Number(shareBtn.getAttribute("data-share-index"));
+  const employee = cardList._renderedData && cardList._renderedData[index];
+  if (!employee) return;
+  shareEmployee(employee);
+  shareBtn.classList.add("copied");
+  setTimeout(() => shareBtn.classList.remove("copied"), 900);
 });
 
 // ─── Filter ──────────────────────────────────────────────────────
