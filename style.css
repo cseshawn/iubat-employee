@@ -106,16 +106,16 @@ ul {
     ),
     var(--color-hero-end);
   color: #ffffff;
-  padding: 56px 24px 84px;
+  padding: 28px 24px 52px;
   text-align: center;
   position: relative;
   overflow: hidden;
 }
 
 .hero__seal {
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 18px;
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 10px;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -126,18 +126,18 @@ ul {
 }
 
 .hero__seal svg {
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
 }
 
 .hero__eyebrow {
-  margin: 0 auto 10px;
+  margin: 0 auto 6px;
   max-width: 360px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  line-height: 1.5;
+  line-height: 1.4;
   color: #d7ecdb;
 }
 
@@ -145,23 +145,23 @@ ul {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: clamp(28px, 7vw, 48px);
+  font-size: clamp(24px, 5.5vw, 36px);
   letter-spacing: -0.01em;
   line-height: 1.15;
   color: #ffffff;
 }
 
 .hero__subtitle {
-  margin: 14px auto 0;
+  margin: 8px auto 0;
   max-width: 420px;
-  font-size: clamp(13.5px, 3.6vw, 15.5px);
-  line-height: 1.5;
+  font-size: clamp(13px, 3.2vw, 14.5px);
+  line-height: 1.4;
   color: #eaf6ec;
 }
 
 .searchbar-wrap {
   max-width: var(--content-max);
-  margin: 34px auto 0;
+  margin: 20px auto 0;
   position: relative;
   z-index: 2;
 }
