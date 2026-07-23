@@ -1,8 +1,3 @@
-/* ==========================================================================
-   IUBAT EMPLOYEE ROSTER — APP LOGIC
-   ========================================================================== */
-
-// ---- Supabase config -------------------------------------------------
 const SUPABASE_URL = "https://kdnuotszsmkhojvgptkw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_8vQ-AcoAnBVdTz-Cr5_Tdg_6F_5Ap4P";
 const TABLE_NAME = "Employee";
@@ -10,7 +5,6 @@ const TABLE_NAME = "Employee";
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ---- Column names (as they exist in the Employee table) ---------------
 const COL = {
   name: "Name",
   designation: "Designation",
@@ -20,12 +14,10 @@ const COL = {
   phone: "Cell",
 };
 
-// ---- State --------------------------------------------------------------
 let allEmployees = [];
 let searchQuery = "";
 let searchDebounceTimer = null;
 
-// ---- DOM refs -------------------------------------------------------------
 const employeeListEl = document.getElementById("employeeList");
 const loadingStateEl = document.getElementById("loadingState");
 const errorStateEl = document.getElementById("errorState");
@@ -33,6 +25,7 @@ const errorMessageEl = document.getElementById("errorMessage");
 const emptyStateEl = document.getElementById("emptyState");
 const searchInputEl = document.getElementById("searchInput");
 const clearSearchEl = document.getElementById("clearSearch");
+const searchSubmitEl = document.getElementById("searchSubmit");
 const resultCountEl = document.getElementById("resultCount");
 const retryBtnEl = document.getElementById("retryBtn");
 const toastEl = document.getElementById("toast");
@@ -41,14 +34,6 @@ const fabBtn = document.getElementById("fabBtn");
 const fabOverlay = document.getElementById("fabOverlay");
 const closeModalBtn = document.getElementById("closeModal");
 
-// ==========================================================================
-// Helpers
-// ==========================================================================
-
-/**
- * Prevents duplicate "Room" labeling — if the stored value already
- * mentions "room", it's shown as-is; otherwise "Room" is prefixed.
- */
 function formatRoom(value) {
   if (!value) return "";
   const str = String(value).trim();
@@ -56,41 +41,24 @@ function formatRoom(value) {
   return `Room ${str}`;
 }
 
-/**
- * Formats a Bangladeshi phone number for display, always showing the
- * +880 country code:
- *  - "1911127825"      -> "+880 1911-127825"
- *  - "01911127825"     -> "+880 1911-127825"
- *  - "+8801911127825"  -> "+880 1911-127825"
- *  - already-formatted or foreign numbers are returned untouched.
- */
 function formatPhoneDisplay(value) {
   if (!value) return "";
   let str = String(value).trim();
-
-  // Pull out just the digits to reason about the number.
   let digits = str.replace(/\D/g, "");
 
-  // Normalize to the 10-digit local number (drop leading 0 or 880).
   if (digits.startsWith("880")) {
     digits = digits.slice(3);
   } else if (digits.startsWith("0")) {
     digits = digits.slice(1);
   }
 
-  // Only reformat if it looks like a standard 10-digit BD mobile number.
   if (/^\d{10}$/.test(digits)) {
     return `+880 ${digits.slice(0, 4)}-${digits.slice(4)}`;
   }
 
-  // Fallback: not a recognizable BD mobile number, leave as-is.
   return str;
 }
 
-/**
- * Digits (plus a leading +) suitable for a tel: link, with +880 applied
- * the same way as formatPhoneDisplay.
- */
 function formatPhoneTel(value) {
   if (!value) return "";
   let digits = String(value).replace(/\D/g, "");
@@ -140,10 +108,6 @@ function buildShareText(emp) {
   ].filter(Boolean);
   return lines.join("\n");
 }
-
-// ==========================================================================
-// Rendering
-// ==========================================================================
 
 function renderEmployeeCard(emp) {
   const name = emp[COL.name] || "Unnamed";
@@ -238,7 +202,6 @@ function renderList(employees) {
   employees.forEach((emp, idx) => {
     const card = renderEmployeeCard(emp);
     card.style.animationDelay = `${Math.min(idx, 12) * 28}ms`;
-    // stash the record on the element for event delegation
     card.dataset.index = String(idx);
     frag.appendChild(card);
   });
@@ -280,13 +243,8 @@ function applyFilterAndRender() {
     renderList(filtered);
   }
 
-  // keep a reference for event delegation lookups
   applyFilterAndRender._current = filtered;
 }
-
-// ==========================================================================
-// Data loading
-// ==========================================================================
 
 async function loadEmployees() {
   loadingStateEl.hidden = false;
@@ -313,10 +271,6 @@ async function loadEmployees() {
       err.message || "Please check your connection and try again.";
   }
 }
-
-// ==========================================================================
-// Event delegation: copy / share buttons on cards
-// ==========================================================================
 
 employeeListEl.addEventListener("click", async (e) => {
   const card = e.target.closest(".employee-card");
@@ -347,7 +301,7 @@ employeeListEl.addEventListener("click", async (e) => {
           text,
         });
       } catch (err) {
-        // user cancelled share — no-op
+        // user cancelled the share sheet
       }
     } else {
       try {
@@ -360,10 +314,6 @@ employeeListEl.addEventListener("click", async (e) => {
   }
 });
 
-// ==========================================================================
-// Search
-// ==========================================================================
-
 searchInputEl.addEventListener("input", (e) => {
   searchQuery = e.target.value;
   clearSearchEl.hidden = searchQuery.length === 0;
@@ -371,7 +321,22 @@ searchInputEl.addEventListener("input", (e) => {
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(() => {
     applyFilterAndRender();
-  }, 80); // near-instant, smooths rapid typing on large datasets
+  }, 80);
+});
+
+searchInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    clearTimeout(searchDebounceTimer);
+    applyFilterAndRender();
+    searchInputEl.blur();
+  }
+});
+
+searchSubmitEl.addEventListener("click", () => {
+  clearTimeout(searchDebounceTimer);
+  applyFilterAndRender();
+  searchInputEl.blur();
 });
 
 clearSearchEl.addEventListener("click", () => {
@@ -383,10 +348,6 @@ clearSearchEl.addEventListener("click", () => {
 });
 
 retryBtnEl.addEventListener("click", loadEmployees);
-
-// ==========================================================================
-// FAB / modal
-// ==========================================================================
 
 function openModal() {
   fabOverlay.hidden = false;
@@ -408,9 +369,5 @@ fabOverlay.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !fabOverlay.hidden) closeModal();
 });
-
-// ==========================================================================
-// Init
-// ==========================================================================
 
 loadEmployees();
