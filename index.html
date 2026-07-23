@@ -2,121 +2,254 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes"
-    />
-    <title>IUBAT · Employee Directory</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IUBAT Employee Roster</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- ===== HEADER ===== -->
-    <header class="header">
-      <div class="header-inner">
-        <div class="logo">
-          <div class="logo-mark">I</div>
-          <div>
-            <h1>IUBAT Employee Directory</h1>
-            <p class="logo-sub">
-              International University of Business Agriculture and Technology
-            </p>
-          </div>
-        </div>
-        <span class="badge" id="lastUpdated">Loading…</span>
+    <!-- HEADER -->
+    <header class="hero">
+      <div class="hero__seal" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          width="40"
+          height="40"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M12 3 2 8l10 5 10-5-10-5Z" />
+          <path d="M6 10.5V16c0 1 2.7 3 6 3s6-2 6-3v-5.5" />
+          <path d="M22 8v6" />
+        </svg>
       </div>
-    </header>
+      <p class="hero__eyebrow">
+        International University of Business Agriculture and Technology
+      </p>
+      <h1 class="hero__title">IUBAT Employee Roster</h1>
+      <p class="hero__subtitle">
+        Look up any faculty or staff member by name, designation, or department.
+      </p>
 
-    <!-- ===== SEARCH ===== -->
-    <section class="search-section">
-      <div class="search-container">
-        <div class="search-box">
+      <div class="searchbar-wrap">
+        <div class="searchbar" role="search">
           <svg
-            class="search-icon"
+            class="searchbar__icon"
             viewBox="0 0 24 24"
+            width="20"
+            height="20"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
           >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
-            type="text"
             id="searchInput"
-            placeholder="Search by Faculty name, department, designation, room…"
-            autocomplete="on"
+            type="text"
+            class="searchbar__input"
+            placeholder="Search by name, designation, or department…"
+            autocomplete="off"
+            aria-label="Search employees"
           />
-          <button class="clear-btn" id="clearBtn" aria-label="Clear search">
-            ✕
+          <button
+            id="clearSearch"
+            class="searchbar__clear"
+            aria-label="Clear search"
+            hidden
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
-        <div class="search-stats">
-          <span id="resultCount"></span>
-        </div>
+        <p id="resultCount" class="result-count" aria-live="polite"></p>
       </div>
-    </section>
+    </header>
 
-    <!-- ===== STATES ===== -->
-    <div id="loadingState" class="state-container">
-      <div class="spinner"></div>
-      <p>Loading directory…</p>
-    </div>
+    <!-- MAIN DIRECTORY -->
+    <main class="directory">
+      <div id="loadingState" class="state-panel">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading the roster…</p>
+      </div>
 
-    <div id="errorState" class="state-container hidden">
-      <div class="state-icon">⚠️</div>
-      <h3>Something went wrong</h3>
-      <p id="errorMsg">Unable to load employee data. Please try again.</p>
-      <button class="btn-primary" onclick="init()">Retry</button>
-    </div>
+      <div id="errorState" class="state-panel" hidden>
+        <p class="state-panel__title">Couldn't load the roster.</p>
+        <p id="errorMessage" class="state-panel__body"></p>
+        <button id="retryBtn" class="btn btn--outline">Try again</button>
+      </div>
 
-    <div id="emptyState" class="state-container hidden">
-      <div class="state-icon">🔍</div>
-      <h3>No results found</h3>
-      <p>Try adjusting your search or clearing the filter.</p>
-      <button class="btn-primary" onclick="clearSearch()">Clear search</button>
-    </div>
+      <div id="emptyState" class="state-panel" hidden>
+        <svg
+          viewBox="0 0 24 24"
+          width="36"
+          height="36"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <p class="state-panel__title">No employee found.</p>
+        <p class="state-panel__body">
+          Try a different name, designation, or department.
+        </p>
+      </div>
 
-    <!-- ===== ROSTER ===== -->
-    <main id="rosterWrap" class="roster-wrap hidden">
-      <div class="card-grid" id="cardList"></div>
+      <ul id="employeeList" class="employee-list" aria-live="polite"></ul>
     </main>
 
-    <!-- ===== FAB ===== -->
-    <button class="fab" id="fabToggle" aria-label="Request update">
-      <span class="fab-icon">✉</span>
-      <span class="fab-label">Request update</span>
+    <!-- FLOATING ACTION BUTTON -->
+    <button
+      id="fabBtn"
+      class="fab"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      title="Request / Update"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="22"
+        height="22"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+      >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+      <span class="fab__label">Request&nbsp;/&nbsp;Update</span>
     </button>
 
-    <div class="fab-popover" id="fabPopover">
-      <button class="popover-close" id="closePopover" aria-label="Close">
-        ✕
-      </button>
-      <h4>Request an update</h4>
-      <p>Spotted an error or need a listing changed? Reach out here:</p>
-      <div class="popover-links">
-        <a href="mailto:shawn.iubat@gmail.com" target="_blank" rel="noopener">
-          <span>📧</span> shawn.iubat@gmail.com
-        </a>
-        <a href="https://facebook.com/shawnazd" target="_blank" rel="noopener">
-          <span>👤</span> facebook.com/shawnazd
-        </a>
-        <a href="https://wa.me/8801873319733" target="_blank" rel="noopener">
-          <span>📱</span> 01873319733
-        </a>
+    <!-- REQUEST / UPDATE MODAL -->
+    <div id="fabOverlay" class="overlay" hidden>
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+      >
+        <button id="closeModal" class="modal__close" aria-label="Close">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        <h2 id="modalTitle" class="modal__title">
+          Request or update a listing
+        </h2>
+        <p class="modal__subtitle">
+          Spotted an error, or need a new entry added? Reach us here.
+        </p>
+
+        <ul class="contact-list">
+          <li class="contact-item">
+            <a class="contact-item__link" href="mailto:shawn.iubat@gmail.com">
+              <span class="contact-item__icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                >
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 6-10 7L2 6" />
+                </svg>
+              </span>
+              <span class="contact-item__text">
+                <span class="contact-item__label">Email</span>
+                <span class="contact-item__value">shawn.iubat@gmail.com</span>
+              </span>
+            </a>
+          </li>
+          <li class="contact-item">
+            <a
+              class="contact-item__link"
+              href="https://facebook.com/shawnazd"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="contact-item__icon contact-item__icon--facebook">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06C2 17.08 5.66 21.24 10.44 22v-7.03H7.9v-2.9h2.53V9.85c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.44 2.9h-2.34V22C18.34 21.24 22 17.08 22 12.06Z"
+                  />
+                </svg>
+              </span>
+              <span class="contact-item__text">
+                <span class="contact-item__label">Facebook</span>
+                <span class="contact-item__value">shawnazd</span>
+              </span>
+            </a>
+          </li>
+          <li class="contact-item">
+            <a
+              class="contact-item__link"
+              href="https://wa.me/8801873319733"
+              target="_blank"
+              rel="noopener"
+            >
+              <span class="contact-item__icon contact-item__icon--whatsapp">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.8 14.3c-.3.8-1.6 1.5-2.2 1.6-.6.1-1.3.1-2.1-.1-.5-.1-1.1-.3-1.9-.7-3.3-1.4-5.4-4.7-5.6-4.9-.2-.2-1.3-1.7-1.3-3.3 0-1.6.8-2.3 1.1-2.7.3-.3.7-.4 1-.4h.7c.2 0 .5 0 .7.6.3.7.9 2.3 1 2.5.1.2.2.4 0 .6-.1.2-.2.4-.4.6-.2.2-.4.5-.6.6-.2.2-.4.4-.2.8.2.4.9 1.6 2 2.6 1.4 1.2 2.5 1.6 2.9 1.8.4.2.6.1.8-.1.2-.2.9-1 1.1-1.4.2-.4.5-.3.8-.2.3.1 2 1 2.4 1.1.4.2.6.3.7.4.1.2.1.9-.2 1.7Z"
+                  />
+                </svg>
+              </span>
+              <span class="contact-item__text">
+                <span class="contact-item__label">Telegram / WhatsApp</span>
+                <span class="contact-item__value">+880 1873 319733</span>
+              </span>
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
 
-    <!-- ===== TOAST ===== -->
-    <div id="toast" class="toast"></div>
+    <!-- TOAST -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
   </body>
 </html>
